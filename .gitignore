@@ -1,5 +1,5 @@
 # Dependencies
-backend/node_modules/
+node_modules/
 
 # Environment Variables - DO NOT COMMIT THIS FILE
 .env
