@@ -22,7 +22,7 @@ The app uses a **separated frontend and backend** architecture:
 - Express.js  
 
 ### API
-- Perplexity API (for natural language understanding and response generation)
+- Perplexity API
 
 ## Setup and Installation
 
