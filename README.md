@@ -2,12 +2,7 @@
 
 ## Description
 
-**DickinsonQA** is a web application designed to help students and other members of Dickinson College quickly find answers to questions about institutional policies. It features a chat-like interface and leverages the **Perplexity API** to understand user queries and provide relevant responses based on the college’s official policy documents.
-
-The app uses a **separated frontend and backend** architecture:
-
-- **Frontend**: HTML, Tailwind CSS, and JavaScript
-- **Backend**: Node.js and Express.js
+**DickinsonQA** is a web application designed to help students and other members of Dickinson College quickly find answers to questions about institutional policies. It features a chat-like interface and leverages the **Perplexity API** to understand user queries and provide relevant responses based on the Dickinson’s official website.
 
 ## Technologies Used
 
