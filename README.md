@@ -26,7 +26,7 @@
 - Node.js and npm installed
 - A Perplexity API key
 
-### Backend Setup
+### Setup
 
 1. **Clone the repository:**
 
@@ -44,6 +44,11 @@ Add your Perplexity API key:
 
 ```
 PERPLEXITY_API_KEY=your_actual_perplexity_api_key_here
+```
+4. **Change API url:**
+In index.html, change BACKEND_API_URL to localhost:
+```javascript
+const BACKEND_API_URL = 'http://localhost:3000/api/ask';
 ```
 ### How to Run
 1. **Start Server:**
