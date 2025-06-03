@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dickinson Q&A</title>
+    <title>Dickinson QA
+    </title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -87,9 +88,19 @@
 
         .citation-marker {
             position: relative; 
-            display: inline-block;
-            color: #7dd3fc; font-weight: 600; cursor: help;
-            padding: 0 2px; text-decoration: none !important;
+            display: inline-flex; 
+            align-items: center; 
+            color: #7dd3fc; 
+            cursor: help;
+            padding: 0 3px; 
+            text-decoration: none !important;
+            vertical-align: -0.1em; 
+        }
+        .citation-marker svg.citation-icon-svg { 
+            width: 0.9em;  
+            height: 0.9em;
+            display: inline-block; 
+            fill: currentColor; 
         }
         .citation-tooltip {
             visibility: hidden; 
@@ -150,12 +161,11 @@
         @keyframes blink {
             from, to { background-color: transparent; } 50% { background-color: #94a3b8; }
         }
-        /* Styles for stop button */
         #sendButton.stop-button {
-            background-color: #ef4444; /* red-500 */
+            background-color: #ef4444; 
         }
         #sendButton.stop-button:hover {
-            background-color: #dc2626; /* red-600 */
+            background-color: #dc2626; 
         }
     </style>
 </head>
@@ -185,8 +195,8 @@
     </div>
 
     <script>
-       //onst BACKEND_API_URL = 'http://localhost:3000/api/ask';
-        const BACKEND_API_URL = 'https://dickinsonqa.onrender.com/api/ask'
+        //const BACKEND_API_URL = 'http://localhost:3000/api/ask';
+        const BACKEND_API_URL = 'https://dickinsonqa.onrender.com/api/ask';
         const chatMessagesEl = document.getElementById('chatMessages');
         const questionInput = document.getElementById('questionInput');
         const sendButton = document.getElementById('sendButton');
@@ -195,16 +205,12 @@
         let currentAiMessageContentElement = null;
         let currentAiMessageText = '';
         let currentAiMessageCitations = [];
-        let currentAbortController = null; // To manage fetch abortion
-        let isGenerating = false; // Track if AI is currently generating
+        let currentAbortController = null; 
+        let isGenerating = false; 
 
-        // Combined event listener for Send/Stop button
         sendButton.addEventListener('click', () => {
             if (isGenerating && currentAbortController) {
-                //console.log("Frontend: Stop button clicked.");
                 currentAbortController.abort();
-                // finalizeAiMessage will be called by the stream's error/abort handler
-                // Reset button state is handled in resetGenerationState
             } else {
                 handleSendMessage();
             }
@@ -212,7 +218,7 @@
 
         questionInput.addEventListener('keypress', (event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
-                if (!isGenerating) { // Only send if not already generating
+                if (!isGenerating) { 
                     event.preventDefault(); 
                     handleSendMessage();
                 }
@@ -243,8 +249,7 @@
                 currentAbortController = null; 
             }
         }
-
-
+        
         function createMessageDiv(sender) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', sender === 'user' ? 'user-message' : 'ai-message');
@@ -291,27 +296,23 @@
         }
 
         function finalizeAiMessage(citations = []) {
-            if (!currentAiMessageContentElement && !isGenerating) { // Check if already finalized or not even started
-                 // If we were generating but content element is somehow gone, still reset state.
+            if (!currentAiMessageContentElement && !isGenerating) {
                 if (isGenerating) {
                     setGeneratingState(false);
                     removeTypingIndicator();
                 }
                 return;
             }
-
             if (currentAiMessageContentElement) {
                 const cursor = currentAiMessageContentElement.querySelector('.blinking-cursor');
                 if (cursor) cursor.remove();
                 currentAiMessageCitations = citations; 
                 processAndDisplayFinalAiText(currentAiMessageContentElement, currentAiMessageText, currentAiMessageCitations);
             }
-            
             if (isGenerating) { 
                 setGeneratingState(false); 
                 removeTypingIndicator();   
             }
-
             currentAiMessageContentElement = null; 
             currentAiMessageText = '';
             currentAiMessageCitations = [];
@@ -319,38 +320,61 @@
         }
         
         function processAndDisplayFinalAiText(parentElement, rawText, citations) {
-            let textWithCitationHtml = rawText;
+            const citationIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" class="citation-icon-svg">
+                                        <path fill="#7dd3fc" d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                                     </svg>`;
+            
+            const citationPlaceholdersData = [];
+            let textForMarkdown = rawText;
+
             if (citations && citations.length > 0) {
-                textWithCitationHtml = rawText.replace(/\[(\d+)\]/g, (match, numberStr) => {
+                textForMarkdown = rawText.replace(/\[(\d+)\]/g, (match, numberStr) => {
                     const number = parseInt(numberStr, 10);
                     if (number > 0 && number <= citations.length) {
-                        const url = citations[number - 1];
-                        const safeUrl = encodeURI(url); 
-                        return `<span class="citation-marker" tabindex="0">[${number}]<span class="citation-tooltip">Source: <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${url}</a></span></span>`;
+                        const uniqueId = `citation-temp-id-${Date.now()}-${Math.random().toString(36).substring(2, 7)}-${number}`;
+                        citationPlaceholdersData.push({
+                            id: uniqueId,
+                            number: number,
+                            url: citations[number - 1]
+                        });
+                        return `<span id="${uniqueId}" class="citation-placeholder-temp"></span>`; // Temporary placeholder span
                     }
                     return match; 
                 });
             }
+
             try {
                 marked.setOptions({ breaks: true, gfm: true });
-                const htmlFromMarkdown = marked.parse(textWithCitationHtml);
-                parentElement.innerHTML = htmlFromMarkdown;
+                parentElement.innerHTML = marked.parse(textForMarkdown); // Parse Markdown with temporary placeholders
 
-                const markersInParent = parentElement.querySelectorAll('.citation-marker');
-                markersInParent.forEach(markerSpan => {
-                    markerSpan.addEventListener('mouseenter', adjustTooltipPosition);
-                    markerSpan.addEventListener('focus', adjustTooltipPosition); 
+                // Now, find each temporary placeholder span and replace it with the full citation marker
+                citationPlaceholdersData.forEach(data => {
+                    const tempPlaceholderSpan = parentElement.querySelector(`#${data.id}`);
+                    if (tempPlaceholderSpan) {
+                        const safeUrl = encodeURI(data.url);
+                        const markerSpan = document.createElement('span');
+                        markerSpan.className = 'citation-marker';
+                        markerSpan.tabIndex = 0;
+                        markerSpan.innerHTML = `${citationIconSvg}<span class="citation-tooltip">Source ${data.number}: <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${data.url}</a></span>`;
+                        
+                        markerSpan.addEventListener('mouseenter', adjustTooltipPosition);
+                        markerSpan.addEventListener('focus', adjustTooltipPosition);
+                        
+                        // Replace the temporary placeholder with the fully constructed marker
+                        tempPlaceholderSpan.parentNode.replaceChild(markerSpan, tempPlaceholderSpan);
+                    }
                 });
 
             } catch (e) {
-                console.error("Error parsing Markdown:", e);
+                console.error("Error parsing Markdown or processing citations:", e);
                 const pre = document.createElement('pre');
                 pre.style.whiteSpace = 'pre-wrap'; 
-                pre.textContent = textWithCitationHtml; 
+                pre.textContent = rawText; // Display original raw text on error
                 parentElement.innerHTML = ''; 
                 parentElement.appendChild(pre);
             }
         }
+
 
         function measureTooltip(tooltip) {
             const originalVisibility = tooltip.style.visibility;
@@ -421,12 +445,12 @@
 
         async function handleSendMessage() {
             const question = questionInput.value.trim();
-            if (!question || isGenerating) return; // Prevent sending if empty or already generating
+            if (!question || isGenerating) return; 
 
             appendUserMessage(question);
             questionInput.value = ''; questionInput.style.height = 'auto';
             
-            currentAbortController = new AbortController(); // Create new controller for this request
+            currentAbortController = new AbortController(); 
             setGeneratingState(true);
             showTypingIndicator(); 
             clearError();
@@ -436,19 +460,16 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', },
                     body: JSON.stringify({ question: question }),
-                    signal: currentAbortController.signal // Pass the signal to fetch
+                    signal: currentAbortController.signal 
                 });
                 
-                // No need to remove typing indicator here, startAiMessage will do it.
-                // If fetch itself fails (before stream), the catch block handles UI reset.
-
                 if (!response.ok || !response.body) {
                     const errorText = await response.text().catch(() => "Could not retrieve error text.");
                     console.error("Frontend: Fetch response not OK or no body. Status:", response.status, "Error text:", errorText);
                     throw new Error(`HTTP error! status: ${response.status}. ${errorText}`);
                 }
                 
-                startAiMessage(); // This will also remove the typing indicator
+                startAiMessage(); 
                 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
@@ -459,12 +480,10 @@
                         const { done, value } = await reader.read();
                         if (done) { 
                             finalizeAiMessage(currentAiMessageCitations); 
-                            // setGeneratingState(false) is called within finalizeAiMessage via resetGenerationState
                             return; 
                         }
-                        if (!isGenerating) { // Check if stopped during read
-                            //console.log("Frontend: Stream processing halted as generation was stopped.");
-                            finalizeAiMessage(currentAiMessageCitations); // Finalize what we have
+                        if (!isGenerating) { 
+                            finalizeAiMessage(currentAiMessageCitations); 
                             return;
                         }
 
@@ -472,7 +491,7 @@
                         buffer += decodedChunk;
                         let eventBoundary;
                         while ((eventBoundary = buffer.indexOf('\n\n')) !== -1) {
-                            if (!isGenerating) break; // Check again if stopped
+                            if (!isGenerating) break; 
                             const eventString = buffer.substring(0, eventBoundary);
                             buffer = buffer.substring(eventBoundary + 2);
                             let eventName = 'message'; let eventData = '';
@@ -493,31 +512,26 @@
                                 } catch (e) { console.error('Frontend: Error parsing SSE data JSON:', e, "Raw Data:", eventData); }
                             }
                         }
-                        if (isGenerating) processStreamChunks(); // Continue only if still generating
+                        if (isGenerating) processStreamChunks(); 
                         else finalizeAiMessage(currentAiMessageCitations);
 
                     } catch (streamError) {
                         if (streamError.name === 'AbortError') {
-                            //console.log('Frontend: Stream aborted by user.');
-                            if (currentAiMessageContentElement) { // Check if a message bubble exists to append to
-                                currentAiMessageText += ' \n\n_(Stopped by user)_'; // Append as Markdown for new line and emphasis
+                            if (currentAiMessageContentElement) { 
+                                 currentAiMessageText += ' \n\n_(Stopped by user)_'; 
                             }
-                            finalizeAiMessage(currentAiMessageCitations); // This will process, display, and reset UI state
+                            finalizeAiMessage(currentAiMessageCitations); 
                         } else {
                             console.error('Frontend: Error in processStreamChunks reader.read():', streamError);
                             displayError('Failed to read stream from server.');
                             finalizeAiMessage([]); 
                         }
-                        // resetGenerationState is called by finalizeAiMessage or specifically for AbortError
                     }
                 }
                 processStreamChunks();
-            } catch (fetchError) { // Errors from the initial fetch call itself
+            } catch (fetchError) { 
                 console.error('Frontend: Error in handleSendMessage (initial fetch or setup):', fetchError);
-                // Display error in an AI bubble
-                startAiMessage(); 
-                updateAiMessage(`Sorry, I encountered an issue: ${fetchError.message}`);
-                finalizeAiMessage([]); // This will call resetGenerationState
+                finalizeAiMessage([]); 
                 displayError(`Error: ${fetchError.message}. Ensure backend is running.`);
             }
         }
