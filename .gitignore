@@ -1,5 +1,5 @@
 # Dependencies
-/node_modules
+backend/node_modules/
 
 # Environment Variables - DO NOT COMMIT THIS FILE
 .env
@@ -9,3 +9,5 @@
 
 # Windows
 Thumbs.db
+
+todo.txt
