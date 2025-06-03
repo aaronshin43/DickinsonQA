@@ -1,0 +1,11 @@
+# Dependencies
+/node_modules
+
+# Environment Variables - DO NOT COMMIT THIS FILE
+.env
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db

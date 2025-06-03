@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dickinson Q&A</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        #chatContainer {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-height: 100vh;
+        }
+        #chatMessages {
+            flex-grow: 1;
+            overflow-y: auto; 
+            overflow-x: hidden; 
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            position: relative; 
+        }
+        #chatMessages::-webkit-scrollbar { width: 8px; }
+        #chatMessages::-webkit-scrollbar-track { background: #4a5568; border-radius: 10px; }
+        #chatMessages::-webkit-scrollbar-thumb { background: #718096; border-radius: 10px; }
+        #chatMessages::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+
+        .message {
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            max-width: 75%;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            line-height: 1.6;
+            position: relative; 
+        }
+        .user-message {
+            background-color: #38bdf8; color: white;
+            align-self: flex-end; border-bottom-right-radius: 0.25rem;
+        }
+        .ai-message {
+            background-color: #334155; color: #e2e8f0;
+            align-self: flex-start; border-bottom-left-radius: 0.25rem;
+        }
+        .message-sender {
+            font-size: 0.75rem; font-weight: 500;
+            margin-bottom: 0.25rem; color: #94a3b8;
+        }
+        .user-message .message-sender { color: #e0f2fe; text-align: right; }
+
+        .ai-message-content p { margin-bottom: 0.5em; }
+        .ai-message-content p:last-child { margin-bottom: 0; }
+        .ai-message-content ul, .ai-message-content ol { margin-left: 1.5em; margin-bottom: 0.5em; }
+        .ai-message-content li { margin-bottom: 0.25em; }
+        .ai-message-content strong { font-weight: 600; }
+        .ai-message-content em { font-style: italic; }
+        .ai-message-content code {
+            background-color: #475569; padding: 0.1em 0.3em;
+            border-radius: 0.25rem; font-size: 0.9em; word-break: break-all;
+        }
+        .ai-message-content pre {
+            background-color: #1e293b; padding: 0.75em;
+            border-radius: 0.375rem; overflow-x: auto;
+            margin-bottom: 0.5em; max-width: 100%; box-sizing: border-box;
+        }
+        .ai-message-content pre code {
+            background-color: transparent; padding: 0; font-size: 0.85em;
+            word-break: normal; white-space: pre;
+        }
+        .ai-message-content a { color: #7dd3fc; text-decoration: underline; word-break: break-all; }
+        .ai-message-content a:hover { color: #38bdf8; }
+        .ai-message-content table {
+            width: auto; max-width: 100%; border-collapse: collapse;
+            margin-bottom: 1em; overflow-x: auto; display: block;
+        }
+        .ai-message-content th, .ai-message-content td {
+            border: 1px solid #475569; padding: 0.3em 0.5em; text-align: left;
+        }
+        .ai-message-content th { background-color: #334155; }
+
+        .citation-marker {
+            position: relative; 
+            display: inline-block;
+            color: #7dd3fc; font-weight: 600; cursor: help;
+            padding: 0 2px; text-decoration: none !important;
+        }
+        .citation-tooltip {
+            visibility: hidden; 
+            opacity: 0;
+            position: absolute; 
+            left: -9999px; 
+            top: -9999px;  
+
+            width: max-content; max-width: 300px; 
+            background-color: #1e293b; color: #e2e8f0;
+            text-align: left; border-radius: 6px; padding: 8px 12px;
+            z-index: 20; 
+            bottom: 140%; 
+            
+            transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-size: 0.75rem; line-height: 1.4; font-weight: normal;
+        }
+        .citation-tooltip a { color: #7dd3fc; text-decoration: underline; word-break: break-all; }
+        .citation-tooltip a:hover { color: #38bdf8; }
+
+        .citation-marker:hover .citation-tooltip,
+        .citation-marker:focus .citation-tooltip,
+        .citation-marker:focus-within .citation-tooltip {
+            visibility: visible; 
+            opacity: 1;
+            left: var(--tooltip-left, 50%); 
+            top: auto; 
+            transform: var(--tooltip-transform, translateX(-50%));
+        }
+
+        .citation-tooltip::after { /* Arrow */
+            content: ""; position: absolute;
+            top: 100%; 
+            border-width: 6px; border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+            left: var(--arrow-left-dynamic, 50%); 
+            transform: var(--arrow-transform-dynamic, translateX(-50%));
+        }
+
+        .typing-indicator-container .message-sender { margin-bottom: 0.5rem;}
+        .typing-indicator span {
+            height: 8px; width: 8px; background-color: #94a3b8;
+            border-radius: 50%; display: inline-block;
+            animation: bounce 1.4s infinite ease-in-out both; margin: 0 2px;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); }
+        }
+        #inputArea { border-top: 1px solid #475569; }
+        .ai-message-content .blinking-cursor {
+            display: inline-block; width: 8px; height: 1.2em;
+            background-color: #94a3b8; animation: blink 1s step-end infinite;
+            margin-left: 2px; vertical-align: text-bottom;
+        }
+        @keyframes blink {
+            from, to { background-color: transparent; } 50% { background-color: #94a3b8; }
+        }
+        /* Styles for stop button */
+        #sendButton.stop-button {
+            background-color: #ef4444; /* red-500 */
+        }
+        #sendButton.stop-button:hover {
+            background-color: #dc2626; /* red-600 */
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100">
+
+    <div id="chatContainer" class="w-full max-w-3xl mx-auto bg-slate-800 shadow-2xl rounded-lg overflow-hidden">
+        <header class="bg-slate-700 p-4 text-center shadow-md">
+            <h1 class="text-xl font-bold text-sky-400">Dickinson Q&A</h1>
+        </header>
+
+        <div id="chatMessages">
+            <div class="message ai-message">
+                <p class="message-sender">Red Devil</p>
+                <p class="ai-message-content">Ask me any questions about Dickinson!</p>
+            </div>
+        </div>
+
+        <div id="inputArea" class="p-4 bg-slate-800">
+            <div class="flex items-center gap-2">
+                <textarea id="questionInput" rows="1" class="flex-grow bg-slate-700 border border-slate-600 text-slate-100 text-sm rounded-lg focus:ring-sky-500 focus:border-sky-500 p-2.5 placeholder-slate-400 resize-none" placeholder="Type your question... (Shift+Enter for new line)"></textarea>
+                <button id="sendButton" class="bg-sky-500 hover:bg-sky-600 focus:ring-4 focus:outline-none focus:ring-sky-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors duration-150 ease-in-out">
+                    Send
+                </button>
+            </div>
+            <div id="errorDisplay" class="mt-2 text-red-400 text-xs"></div>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_API_URL = 'http://localhost:3000/api/ask';
+        const chatMessagesEl = document.getElementById('chatMessages');
+        const questionInput = document.getElementById('questionInput');
+        const sendButton = document.getElementById('sendButton');
+        const errorDisplay = document.getElementById('errorDisplay');
+
+        let currentAiMessageContentElement = null;
+        let currentAiMessageText = '';
+        let currentAiMessageCitations = [];
+        let currentAbortController = null; // To manage fetch abortion
+        let isGenerating = false; // Track if AI is currently generating
+
+        // Combined event listener for Send/Stop button
+        sendButton.addEventListener('click', () => {
+            if (isGenerating && currentAbortController) {
+                //console.log("Frontend: Stop button clicked.");
+                currentAbortController.abort();
+                // finalizeAiMessage will be called by the stream's error/abort handler
+                // Reset button state is handled in resetGenerationState
+            } else {
+                handleSendMessage();
+            }
+        });
+
+        questionInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                if (!isGenerating) { // Only send if not already generating
+                    event.preventDefault(); 
+                    handleSendMessage();
+                }
+            }
+        });
+        questionInput.addEventListener('input', () => {
+            questionInput.style.height = 'auto';
+            questionInput.style.height = `${questionInput.scrollHeight}px`;
+            if (questionInput.scrollHeight > 200) {
+                 questionInput.style.overflowY = 'auto'; questionInput.style.height = '200px';
+            } else {
+                 questionInput.style.overflowY = 'hidden';
+            }
+        });
+
+        function setGeneratingState(generating) {
+            isGenerating = generating;
+            if (isGenerating) {
+                sendButton.textContent = 'Stop';
+                sendButton.classList.remove('bg-sky-500', 'hover:bg-sky-600');
+                sendButton.classList.add('stop-button'); 
+                questionInput.disabled = true;
+            } else {
+                sendButton.textContent = 'Send';
+                sendButton.classList.remove('stop-button');
+                sendButton.classList.add('bg-sky-500', 'hover:bg-sky-600');
+                questionInput.disabled = false;
+                currentAbortController = null; 
+            }
+        }
+
+
+        function createMessageDiv(sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender === 'user' ? 'user-message' : 'ai-message');
+            const senderP = document.createElement('p');
+            senderP.classList.add('message-sender');
+            senderP.textContent = sender === 'user' ? 'You' : 'Red Devil';
+            messageDiv.appendChild(senderP);
+            return messageDiv;
+        }
+        
+        function appendUserMessage(text) {
+            const messageDiv = createMessageDiv('user');
+            const contentP = document.createElement('p');
+            contentP.textContent = text; 
+            messageDiv.appendChild(contentP);
+            chatMessagesEl.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function startAiMessage() {
+            removeTypingIndicator();
+            const messageDiv = createMessageDiv('ai');
+            currentAiMessageContentElement = document.createElement('div'); 
+            currentAiMessageContentElement.classList.add('ai-message-content');
+            const cursorSpan = document.createElement('span');
+            cursorSpan.className = 'blinking-cursor';
+            currentAiMessageContentElement.appendChild(cursorSpan); 
+            messageDiv.appendChild(currentAiMessageContentElement);
+            chatMessagesEl.appendChild(messageDiv);
+            currentAiMessageText = ''; currentAiMessageCitations = [];
+            scrollToBottom();
+        }
+
+        function updateAiMessage(token) {
+            if (!currentAiMessageContentElement || !isGenerating) return; 
+            const cursor = currentAiMessageContentElement.querySelector('.blinking-cursor');
+            if (cursor) cursor.remove();
+            currentAiMessageContentElement.appendChild(document.createTextNode(token));
+            currentAiMessageText += token; 
+            const newCursorSpan = document.createElement('span');
+            newCursorSpan.className = 'blinking-cursor';
+            currentAiMessageContentElement.appendChild(newCursorSpan);
+            scrollToBottom();
+        }
+
+        function finalizeAiMessage(citations = []) {
+            if (!currentAiMessageContentElement && !isGenerating) { // Check if already finalized or not even started
+                 // If we were generating but content element is somehow gone, still reset state.
+                if (isGenerating) {
+                    setGeneratingState(false);
+                    removeTypingIndicator();
+                }
+                return;
+            }
+
+            if (currentAiMessageContentElement) {
+                const cursor = currentAiMessageContentElement.querySelector('.blinking-cursor');
+                if (cursor) cursor.remove();
+                currentAiMessageCitations = citations; 
+                processAndDisplayFinalAiText(currentAiMessageContentElement, currentAiMessageText, currentAiMessageCitations);
+            }
+            
+            if (isGenerating) { 
+                setGeneratingState(false); 
+                removeTypingIndicator();   
+            }
+
+            currentAiMessageContentElement = null; 
+            currentAiMessageText = '';
+            currentAiMessageCitations = [];
+            scrollToBottom();
+        }
+        
+        function processAndDisplayFinalAiText(parentElement, rawText, citations) {
+            let textWithCitationHtml = rawText;
+            if (citations && citations.length > 0) {
+                textWithCitationHtml = rawText.replace(/\[(\d+)\]/g, (match, numberStr) => {
+                    const number = parseInt(numberStr, 10);
+                    if (number > 0 && number <= citations.length) {
+                        const url = citations[number - 1];
+                        const safeUrl = encodeURI(url); 
+                        return `<span class="citation-marker" tabindex="0">[${number}]<span class="citation-tooltip">Source: <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${url}</a></span></span>`;
+                    }
+                    return match; 
+                });
+            }
+            try {
+                marked.setOptions({ breaks: true, gfm: true });
+                const htmlFromMarkdown = marked.parse(textWithCitationHtml);
+                parentElement.innerHTML = htmlFromMarkdown;
+
+                const markersInParent = parentElement.querySelectorAll('.citation-marker');
+                markersInParent.forEach(markerSpan => {
+                    markerSpan.addEventListener('mouseenter', adjustTooltipPosition);
+                    markerSpan.addEventListener('focus', adjustTooltipPosition); 
+                });
+
+            } catch (e) {
+                console.error("Error parsing Markdown:", e);
+                const pre = document.createElement('pre');
+                pre.style.whiteSpace = 'pre-wrap'; 
+                pre.textContent = textWithCitationHtml; 
+                parentElement.innerHTML = ''; 
+                parentElement.appendChild(pre);
+            }
+        }
+
+        function measureTooltip(tooltip) {
+            const originalVisibility = tooltip.style.visibility;
+            const originalOpacity = tooltip.style.opacity;
+            const originalLeft = tooltip.style.left;
+            const originalTop = tooltip.style.top;
+            tooltip.style.visibility = 'visible'; 
+            tooltip.style.opacity = '0';      
+            tooltip.style.left = '-9999px';   
+            tooltip.style.top = '-9999px';    
+            const width = tooltip.offsetWidth;
+            tooltip.style.visibility = originalVisibility;
+            tooltip.style.opacity = originalOpacity;
+            tooltip.style.left = originalLeft;
+            tooltip.style.top = originalTop;
+            return width;
+        }
+
+        function adjustTooltipPosition(event) {
+            const markerSpan = event.currentTarget;
+            const tooltip = markerSpan.querySelector('.citation-tooltip');
+            if (!tooltip || !tooltip.style) return;
+            const chatContainerRect = chatMessagesEl.getBoundingClientRect();
+            const markerRect = markerSpan.getBoundingClientRect();
+            const tooltipWidth = measureTooltip(tooltip); 
+            const PADDING_FROM_EDGE = 10; 
+            const ARROW_HALF_WIDTH = 6; 
+            let desiredTooltipLeftRelativeToMarker = (markerRect.width / 2) - (tooltipWidth / 2);
+            let defaultTooltipLeftViewport = markerRect.left + desiredTooltipLeftRelativeToMarker;
+            let defaultTooltipRightViewport = defaultTooltipLeftViewport + tooltipWidth;
+            if (defaultTooltipRightViewport > (chatContainerRect.right - PADDING_FROM_EDGE)) {
+                const targetRightViewport = chatContainerRect.right - PADDING_FROM_EDGE;
+                defaultTooltipLeftViewport = targetRightViewport - tooltipWidth;
+                desiredTooltipLeftRelativeToMarker = defaultTooltipLeftViewport - markerRect.left;
+            } else if (defaultTooltipLeftViewport < (chatContainerRect.left + PADDING_FROM_EDGE)) {
+                const targetLeftViewport = chatContainerRect.left + PADDING_FROM_EDGE;
+                defaultTooltipLeftViewport = targetLeftViewport;
+                desiredTooltipLeftRelativeToMarker = defaultTooltipLeftViewport - markerRect.left;
+            }
+            tooltip.style.setProperty('--tooltip-left', `${desiredTooltipLeftRelativeToMarker}px`);
+            tooltip.style.setProperty('--tooltip-transform', 'translateX(0)'); 
+            const markerCenterRelativeToMarkerLeft = markerRect.width / 2;
+            let arrowLeftRelativeToTooltip = markerCenterRelativeToMarkerLeft - desiredTooltipLeftRelativeToMarker - ARROW_HALF_WIDTH;
+            const minArrowCssLeft = 5; 
+            const maxArrowCssLeft = tooltipWidth - (ARROW_HALF_WIDTH * 2) - 5; 
+            arrowLeftRelativeToTooltip = Math.max(minArrowCssLeft, Math.min(arrowLeftRelativeToTooltip, maxArrowCssLeft));
+            tooltip.style.setProperty('--arrow-left-dynamic', `${arrowLeftRelativeToTooltip}px`);
+            tooltip.style.setProperty('--arrow-transform-dynamic', `translateX(0)`);
+        }
+        
+        function showTypingIndicator() {
+            removeTypingIndicator();
+            const messageDiv = createMessageDiv('ai');
+            messageDiv.id = 'typingIndicator';
+            messageDiv.classList.add('typing-indicator-container');
+            const typingDotsDiv = document.createElement('div');
+            typingDotsDiv.classList.add('typing-indicator');
+            typingDotsDiv.innerHTML = `<span></span><span></span><span></span>`;
+            messageDiv.appendChild(typingDotsDiv); 
+            chatMessagesEl.appendChild(messageDiv);
+            scrollToBottom();
+        }
+        function removeTypingIndicator() {
+            const typingIndicator = document.getElementById('typingIndicator');
+            if (typingIndicator) typingIndicator.remove();
+        }
+        function scrollToBottom() { chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight; }
+
+        async function handleSendMessage() {
+            const question = questionInput.value.trim();
+            if (!question || isGenerating) return; // Prevent sending if empty or already generating
+
+            appendUserMessage(question);
+            questionInput.value = ''; questionInput.style.height = 'auto';
+            
+            currentAbortController = new AbortController(); // Create new controller for this request
+            setGeneratingState(true);
+            showTypingIndicator(); 
+            clearError();
+
+            try {
+                const response = await fetch(BACKEND_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', },
+                    body: JSON.stringify({ question: question }),
+                    signal: currentAbortController.signal // Pass the signal to fetch
+                });
+                
+                // No need to remove typing indicator here, startAiMessage will do it.
+                // If fetch itself fails (before stream), the catch block handles UI reset.
+
+                if (!response.ok || !response.body) {
+                    const errorText = await response.text().catch(() => "Could not retrieve error text.");
+                    console.error("Frontend: Fetch response not OK or no body. Status:", response.status, "Error text:", errorText);
+                    throw new Error(`HTTP error! status: ${response.status}. ${errorText}`);
+                }
+                
+                startAiMessage(); // This will also remove the typing indicator
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                async function processStreamChunks() {
+                    try {
+                        const { done, value } = await reader.read();
+                        if (done) { 
+                            finalizeAiMessage(currentAiMessageCitations); 
+                            // setGeneratingState(false) is called within finalizeAiMessage via resetGenerationState
+                            return; 
+                        }
+                        if (!isGenerating) { // Check if stopped during read
+                            //console.log("Frontend: Stream processing halted as generation was stopped.");
+                            finalizeAiMessage(currentAiMessageCitations); // Finalize what we have
+                            return;
+                        }
+
+                        const decodedChunk = decoder.decode(value, { stream: true });
+                        buffer += decodedChunk;
+                        let eventBoundary;
+                        while ((eventBoundary = buffer.indexOf('\n\n')) !== -1) {
+                            if (!isGenerating) break; // Check again if stopped
+                            const eventString = buffer.substring(0, eventBoundary);
+                            buffer = buffer.substring(eventBoundary + 2);
+                            let eventName = 'message'; let eventData = '';
+                            eventString.split('\n').forEach(line => {
+                                if (line.startsWith('event: ')) eventName = line.substring(7).trim();
+                                else if (line.startsWith('data: ')) eventData = line.substring(6).trim();
+                            });
+                            if (eventData) {
+                                try {
+                                    const parsedData = JSON.parse(eventData);
+                                    if (eventName === 'content') updateAiMessage(parsedData.token || '');
+                                    else if (eventName === 'done') currentAiMessageCitations = parsedData.citations || [];
+                                    else if (eventName === 'error') {
+                                        console.error('Frontend: SSE Error Event from backend:', parsedData.message);
+                                        displayError(`Stream error: ${parsedData.message}`);
+                                        finalizeAiMessage([]); 
+                                    }
+                                } catch (e) { console.error('Frontend: Error parsing SSE data JSON:', e, "Raw Data:", eventData); }
+                            }
+                        }
+                        if (isGenerating) processStreamChunks(); // Continue only if still generating
+                        else finalizeAiMessage(currentAiMessageCitations);
+
+                    } catch (streamError) {
+                        if (streamError.name === 'AbortError') {
+                            //console.log('Frontend: Stream aborted by user.');
+                            if (currentAiMessageContentElement) { // Check if a message bubble exists to append to
+                                currentAiMessageText += ' \n\n_(Stopped by user)_'; // Append as Markdown for new line and emphasis
+                            }
+                            finalizeAiMessage(currentAiMessageCitations); // This will process, display, and reset UI state
+                        } else {
+                            console.error('Frontend: Error in processStreamChunks reader.read():', streamError);
+                            displayError('Failed to read stream from server.');
+                            finalizeAiMessage([]); 
+                        }
+                        // resetGenerationState is called by finalizeAiMessage or specifically for AbortError
+                    }
+                }
+                processStreamChunks();
+            } catch (fetchError) { // Errors from the initial fetch call itself
+                console.error('Frontend: Error in handleSendMessage (initial fetch or setup):', fetchError);
+                // Display error in an AI bubble
+                startAiMessage(); 
+                updateAiMessage(`Sorry, I encountered an issue: ${fetchError.message}`);
+                finalizeAiMessage([]); // This will call resetGenerationState
+                displayError(`Error: ${fetchError.message}. Ensure backend is running.`);
+            }
+        }
+        function displayError(message) {
+            errorDisplay.textContent = message; console.error("Frontend Displayed Error:", message);
+        }
+        function clearError() { errorDisplay.textContent = ''; }
+    </script>
+</body>
+</html>
