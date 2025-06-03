@@ -185,7 +185,7 @@
 
         <div id="inputArea" class="p-4 bg-slate-800">
             <div class="flex items-center gap-2">
-                <textarea id="questionInput" rows="1" class="flex-grow bg-slate-700 border border-slate-600 text-slate-100 text-sm rounded-lg focus:ring-sky-500 focus:border-sky-500 p-2.5 placeholder-slate-400 resize-none" placeholder="Type your question... (Shift+Enter for new line)"></textarea>
+                <textarea id="questionInput" rows="1" class="flex-grow bg-slate-700 border border-slate-600 text-slate-100 text-sm rounded-lg focus:ring-sky-500 focus:border-sky-500 p-2.5 placeholder-slate-400 resize-none" placeholder="Type your question here"></textarea>
                 <button id="sendButton" class="bg-sky-500 hover:bg-sky-600 focus:ring-4 focus:outline-none focus:ring-sky-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors duration-150 ease-in-out">
                     Send
                 </button>
@@ -355,7 +355,7 @@
                         const markerSpan = document.createElement('span');
                         markerSpan.className = 'citation-marker';
                         markerSpan.tabIndex = 0;
-                        markerSpan.innerHTML = `${citationIconSvg}<span class="citation-tooltip">Source ${data.number}: <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${data.url}</a></span>`;
+                        markerSpan.innerHTML = `${citationIconSvg}<span class="citation-tooltip">Source: <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${data.url}</a></span>`;
                         
                         markerSpan.addEventListener('mouseenter', adjustTooltipPosition);
                         markerSpan.addEventListener('focus', adjustTooltipPosition);
